@@ -45,19 +45,17 @@
         </inertial>
     </xacro:macro>
 
-    <xacro:include filename="gazebo_control_v3.xacro" />
-
     <!-- ==================== PROPERTIES ==================== -->
-    <xacro:property name="chassis_length" value="0.38"/>
-    <xacro:property name="chassis_width" value="0.38"/>
-    <xacro:property name="chassis_height" value="1.28577"/>
+    <xacro:property name="chassis_length" value="0.40"/>
+    <xacro:property name="chassis_width" value="0.405"/>
+    <xacro:property name="chassis_height" value="1.17"/>
     <xacro:property name="chassis_mass" value="25.0"/> 
     
-    <xacro:property name="wheel_radius" value="0.08255"/>
-    <xacro:property name="wheel_width" value="0.04109"/>
-    <xacro:property name="wheel_mass" value="1.5"/>
+    <xacro:property name="wheel_radius" value="0.084"/>
+    <xacro:property name="wheel_width" value="0.046"/>
+    <xacro:property name="wheel_mass" value="2.5"/>
     
-    <xacro:property name="wheel_offset_y" value="${(chassis_width / 2) + (wheel_width / 2)}"/>
+    <xacro:property name="wheel_offset_y" value="0.232"/>
 
     <xacro:property name="caster_radius" value="0.10499"/> 
     <xacro:property name="caster_mass" value="0.5"/>
@@ -90,7 +88,7 @@
             <!-- <origin xyz="0.03 0 0.05" rpy="0 0 0"/> -->
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/Model_v2.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="package://mobile_robot/meshes/Model_v1.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="white"/>
         </visual>
@@ -98,7 +96,7 @@
             <!-- <origin xyz="0.03 0 0.05" rpy="0 0 0"/> -->
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/Model_v2.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="package://mobile_robot/meshes/Model_v1.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </collision>
         <xacro:inertial_box mass="${chassis_mass}" x="${chassis_length}" y="${chassis_width}" z="${chassis_height}">
@@ -117,25 +115,25 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/wheel_left.stl" scale="0.01 0.01 0.01"/>
+                <mesh filename="package://mobile_robot/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="blue"/>
         </visual>
         <collision>
-            <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+                <mesh filename="package://mobile_robot/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </collision>
         <xacro:inertial_cylinder mass="${wheel_mass}" length="${wheel_width}" radius="${wheel_radius}">
-            <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
         </xacro:inertial_cylinder>
     </link>
 
     <joint name="right_wheel_joint" type="continuous">
         <parent link="base_link"/>
         <child link="right_wheel"/>
-        <origin xyz="0 -${wheel_offset_y} 0" rpy="0 0 0"/>
+        <origin xyz="0 -${wheel_offset_y} 0" rpy="0 0 3.14159"/>
         <axis xyz="0 1 0"/>
     </joint>
 
@@ -143,25 +141,25 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/wheel_right.stl" scale="0.01 0.01 0.01"/>
+                <mesh filename="package://mobile_robot/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="blue"/>
         </visual>
         <collision>
-            <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+                <mesh filename="package://mobile_robot/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </collision>
         <xacro:inertial_cylinder mass="${wheel_mass}" length="${wheel_width}" radius="${wheel_radius}">
-            <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
         </xacro:inertial_cylinder>
     </link>
 
     <joint name="caster_wheel_joint" type="fixed">
         <parent link="chassis"/>
         <child link="caster_wheel"/>
-        <origin xyz="0.248 0 0.023" rpy="0 0 0"/>
+        <origin xyz="0.248 0 ${caster_radius - wheel_radius}" rpy="0 0 0"/>
     </joint>
 
     <link name="caster_wheel">
@@ -186,7 +184,7 @@
     <joint name="laser_joint" type="fixed">
         <parent link="chassis"/>
         <child link="laser_frame"/>
-        <origin xyz="0.257 0 0.075" rpy="0 0 3.14159"/>
+        <origin xyz="0.225 0 0.085" rpy="0 0 3.14159"/>
     </joint>
 
     <link name="laser_frame">
@@ -249,60 +247,64 @@
         </link>
     </xacro:macro>
 
+    <!-- TOP -->
     <joint name="us_top_left_joint" type="fixed">
         <parent link="chassis"/>
         <child link="us_top_left_link"/>
-        <origin xyz="0.35 0.17 0.48" rpy="0 0 0"/>
+        <origin xyz="0.29 0.18 0.445" rpy="0 0 0"/>
     </joint>
     <xacro:ultrasonic_link name="us_top_left"/>
 
     <joint name="us_top_right_joint" type="fixed">
         <parent link="chassis"/>
         <child link="us_top_right_link"/>
-        <origin xyz="0.35 -0.17 0.48" rpy="0 0 0"/>
+        <origin xyz="0.29 -0.18 0.445" rpy="0 0 0"/>
     </joint>
     <xacro:ultrasonic_link name="us_top_right"/>
-
-    <joint name="us_mid_1_left_joint" type="fixed">
+    
+    <!-- MID-TOP -->
+    <joint name="us_mid_top_left_joint" type="fixed">
         <parent link="chassis"/>
-        <child link="us_mid_1_left_link"/>
-        <origin xyz="0.35 0.17 0.36" rpy="0 0 0"/>
+        <child link="us_mid_top_left_link"/>
+        <origin xyz="0.29 0.18 0.29" rpy="0 0 0"/>
     </joint>
-    <xacro:ultrasonic_link name="us_mid_1_left"/>
+    <xacro:ultrasonic_link name="us_mid_top_left"/>
 
-    <joint name="us_mid_1_right_joint" type="fixed">
+    <joint name="us_mid_top_right_joint" type="fixed">
         <parent link="chassis"/>
-        <child link="us_mid_1_right_link"/>
-        <origin xyz="0.35 -0.17 0.36" rpy="0 0 0"/>
+        <child link="us_mid_top_right_link"/>
+        <origin xyz="0.29 -0.18 0.29" rpy="0 0 0"/>
     </joint>
-    <xacro:ultrasonic_link name="us_mid_1_right"/>
+    <xacro:ultrasonic_link name="us_mid_top_right"/>
 
-    <joint name="us_mid_2_left_joint" type="fixed">
+    <!-- MID-BOT -->
+    <joint name="us_mid_bot_left_joint" type="fixed">
         <parent link="chassis"/>
-        <child link="us_mid_2_left_link"/>
-        <origin xyz="0.35 0.17 0.24" rpy="0 0 0"/>
+        <child link="us_mid_bot_left_link"/>
+        <origin xyz="0.29 0.18 0.145" rpy="0 0 0"/>
     </joint>
-    <xacro:ultrasonic_link name="us_mid_2_left"/>
+    <xacro:ultrasonic_link name="us_mid_bot_left"/>
 
-    <joint name="us_mid_2_right_joint" type="fixed">
+    <joint name="us_mid_bot_right_joint" type="fixed">
         <parent link="chassis"/>
-        <child link="us_mid_2_right_link"/>
-        <origin xyz="0.35 -0.17 0.24" rpy="0 0 0"/>
+        <child link="us_mid_bot_right_link"/>
+        <origin xyz="0.29 -0.18 0.145" rpy="0 0 0"/>
     </joint>
-    <xacro:ultrasonic_link name="us_mid_2_right"/>
+    <xacro:ultrasonic_link name="us_mid_bot_right"/>
 
+    <!-- BOT
     <joint name="us_bot_left_joint" type="fixed">
         <parent link="chassis"/>
         <child link="us_bot_left_link"/>
-        <origin xyz="0.35 0.17 0.12" rpy="0 0 0"/>
+        <origin xyz="0.29 0.145 0.04" rpy="1.5708 0 0"/>
     </joint>
     <xacro:ultrasonic_link name="us_bot_left"/>
 
     <joint name="us_bot_right_joint" type="fixed">
         <parent link="chassis"/>
         <child link="us_bot_right_link"/>
-        <origin xyz="0.35 -0.17 0.12" rpy="0 0 0"/>
+        <origin xyz="0.29 -0.145 0.04" rpy="1.5708 0 0"/>
     </joint>
-    <xacro:ultrasonic_link name="us_bot_right"/>
+    <xacro:ultrasonic_link name="us_bot_right"/> -->
 
 </robot>
