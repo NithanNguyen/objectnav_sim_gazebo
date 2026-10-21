@@ -2,9 +2,14 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="mobile_robot">
 
     <!-- Robot mô phỏng = URDF v1 của receptionist_robot (urdf/mobile_robot.urdf.xacro, mesh Model_v1.stl).
-         Mesh trỏ vào chính gói này (package://objectnav_sim_gazebo/meshes/...). Khi URDF -> SDF, sdformat đổi
-         package:// thành model://, nên home_sim.launch.py thêm thư mục share/ của gói vào GAZEBO_MODEL_PATH.
+         mesh_uri: home_sim.launch.py truyền file://<share>/meshes (Gazebo 11 đọc trực tiếp đường dẫn tuyệt đối,
+         không cần GAZEBO_MODEL_PATH); mặc định package:// dùng cho RViz / xacro chạy tay.
          Collision dùng hình khối đơn giản (đo từ mesh) thay cho mesh STL ~1e5 tam giác. -->
+    <xacro:arg name="mesh_uri" default="package://objectnav_sim_gazebo/meshes"/>
+    <xacro:arg name="publish_odom_tf" default="true"/>
+    <xacro:arg name="lidar_samples" default="3200"/>
+    <xacro:property name="mesh_uri" value="$(arg mesh_uri)"/>
+    <xacro:property name="lidar_samples" value="$(arg lidar_samples)"/>
 
     <!-- ==================== MATERIALS & MACROS ==================== -->
     <material name="white">
@@ -104,7 +109,7 @@
             <!-- <origin xyz="0.03 0 0.05" rpy="0 0 0"/> -->
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://objectnav_sim_gazebo/meshes/Model_v1.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="${mesh_uri}/Model_v1.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="white"/>
         </visual>
@@ -145,7 +150,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://objectnav_sim_gazebo/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="${mesh_uri}/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="blue"/>
         </visual>
@@ -165,14 +170,17 @@
         <parent link="base_link"/>
         <child link="right_wheel"/>
         <origin xyz="0 -${wheel_offset_y} 0" rpy="0 0 3.14159"/>
-        <axis xyz="0 1 0"/>
+        <!-- Khung khớp đã quay pi quanh z nên trục 0 -1 0 (khung khớp) = +y của base_link, cùng chiều bánh trái:
+             vận tốc khớp dương ở cả hai bánh = robot tiến (giả định của gazebo_ros_diff_drive).
+             Bản gốc (0 1 0) làm bánh phải quay ngược -> lệnh tiến thành quay tại chỗ. -->
+        <axis xyz="0 -1 0"/>
     </joint>
 
     <link name="right_wheel">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://objectnav_sim_gazebo/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="${mesh_uri}/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="blue"/>
         </visual>
@@ -198,7 +206,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://objectnav_sim_gazebo/meshes/caster_wheel.stl" scale="0.01 0.01 0.01"/>
+                <mesh filename="${mesh_uri}/caster_wheel.stl" scale="0.01 0.01 0.01"/>
             </geometry>
             <material name="black"/>
         </visual>
@@ -224,7 +232,7 @@
             <origin xyz="0 0 0" rpy="0 0 3.14159"/>
             <geometry>
                 <!-- <cylinder length="0.04" radius="0.038"/> -->
-                <mesh filename="package://objectnav_sim_gazebo/meshes/RPLiDAR_s2.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="${mesh_uri}/RPLiDAR_s2.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="black"/>
         </visual>
@@ -232,7 +240,7 @@
             <origin xyz="0 0 0" rpy="0 0 3.14159"/>
             <geometry>
                 <cylinder length="0.04" radius="0.038"/>
-                <!-- <mesh filename="package://objectnav_sim_gazebo/meshes/RPLiDAR_s2.stl" scale="0.001 0.001 0.001"/> -->
+                <!-- <mesh filename="${mesh_uri}/RPLiDAR_s2.stl" scale="0.001 0.001 0.001"/> -->
             </geometry>
         </collision>
         <xacro:inertial_cylinder mass="0.1" length="0.04" radius="0.038">
@@ -352,6 +360,85 @@
         <material>Gazebo/Black</material>
         <mu1>0.0</mu1>
         <mu2>0.0</mu2>
+    </gazebo>
+
+    <!-- LiDAR 2D: RPLIDAR S2/S2E theo thông số Slamtec — 0.05–30 m (phản xạ 90%), 10 Hz, 0.1125° (= 3200 tia/vòng,
+         32000 điểm/s), sai số ±30 mm, phân giải 13 mm. stddev 0.01 m là giả định (±30 mm ≈ 3σ), không có trong datasheet.
+         laser_frame quay pi như robot thật -> /scan cùng quy ước với sllidar_node (frame_id laser_frame).
+         Giảm lidar_samples (vd. 720) nếu real-time factor của Gazebo tụt. -->
+    <gazebo reference="laser_frame">
+        <sensor name="rplidar_s2" type="ray">
+            <always_on>true</always_on>
+            <visualize>false</visualize>
+            <update_rate>10</update_rate>
+            <ray>
+                <scan>
+                    <horizontal>
+                        <samples>${lidar_samples}</samples>
+                        <resolution>1</resolution>
+                        <min_angle>${-pi}</min_angle>
+                        <max_angle>${pi - 2*pi/float(lidar_samples)}</max_angle>
+                    </horizontal>
+                </scan>
+                <range>
+                    <min>0.05</min>
+                    <max>30.0</max>
+                    <resolution>0.013</resolution>
+                </range>
+                <noise>
+                    <type>gaussian</type>
+                    <mean>0.0</mean>
+                    <stddev>0.01</stddev>
+                </noise>
+            </ray>
+            <plugin name="rplidar_s2_plugin" filename="libgazebo_ros_ray_sensor.so">
+                <ros><remapping>~/out:=scan</remapping></ros>
+                <output_type>sensor_msgs/LaserScan</output_type>
+                <frame_name>laser_frame</frame_name>
+            </plugin>
+        </sensor>
+    </gazebo>
+
+    <!-- IMU: BNO055 trên robot thật publish /imu/data, frame imu_link, 100 Hz. IMU mô phỏng lý tưởng (không nhiễu). -->
+    <gazebo reference="imu_link">
+        <sensor name="bno055" type="imu">
+            <always_on>true</always_on>
+            <update_rate>100</update_rate>
+            <plugin name="bno055_plugin" filename="libgazebo_ros_imu_sensor.so">
+                <ros><remapping>~/out:=imu/data</remapping></ros>
+                <frame_name>imu_link</frame_name>
+                <initial_orientation_as_reference>false</initial_orientation_as_reference>
+            </plugin>
+        </sensor>
+    </gazebo>
+
+    <gazebo>
+        <!-- Dẫn động vi sai: /cmd_vel -> bánh, /odom từ encoder (odometry_source 0, có trượt như thật, không phải
+             ground truth). wheel_separation/diameter khớp wheel_odom_params.yaml (0.464 m, r = 0.084 m).
+             max_wheel_acceleration (m/s² tại vành bánh) = acc_lim_x của Nav2 (1.5); max_wheel_torque 20 N·m là giả định.
+             publish_odom_tf:=false khi chạy EKF (robot_localization) để tránh 2 nguồn TF odom->base_footprint. -->
+        <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
+            <update_rate>100</update_rate>
+            <left_joint>left_wheel_joint</left_joint>
+            <right_joint>right_wheel_joint</right_joint>
+            <wheel_separation>${2*wheel_offset_y}</wheel_separation>
+            <wheel_diameter>${2*wheel_radius}</wheel_diameter>
+            <max_wheel_torque>20</max_wheel_torque>
+            <max_wheel_acceleration>1.5</max_wheel_acceleration>
+            <publish_odom>true</publish_odom>
+            <publish_odom_tf>$(arg publish_odom_tf)</publish_odom_tf>
+            <publish_wheel_tf>false</publish_wheel_tf>
+            <odometry_frame>odom</odometry_frame>
+            <robot_base_frame>base_footprint</robot_base_frame>
+            <odometry_source>0</odometry_source>
+        </plugin>
+
+        <!-- /joint_states của 2 bánh -> robot_state_publisher phát TF base_link->left/right_wheel -->
+        <plugin name="joint_states" filename="libgazebo_ros_joint_state_publisher.so">
+            <update_rate>50</update_rate>
+            <joint_name>left_wheel_joint</joint_name>
+            <joint_name>right_wheel_joint</joint_name>
+        </plugin>
     </gazebo>
 
 </robot>
