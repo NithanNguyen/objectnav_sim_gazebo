@@ -1,0 +1,30 @@
+# Cấu hình lượt thử cho căn hộ ảo (AWS Small House). Hệ tọa độ: world của Gazebo, đơn vị m, rad.
+# Mọi model vật có gốc ở TÂM ĐÁY -> z = độ cao bề mặt đỡ (xem config/surfaces.yaml).
+# Đã kiểm tra hình học bằng tools/check_placements.py (bắn tia xuống mesh nhà). Vẫn cần nhìn lại trong Gazebo.
+robot_radius_m: 0.30          # placeholder: bán kính bao robot, sửa khi có URDF thật
+start_poses:
+  - {id: S1, room: living_room, x: 3.00, y: -3.00, yaw: 3.14}
+  - {id: S2, room: bedroom,     x: -5.50, y: -0.30, yaw: 1.57}
+# Kích thước đế vật (dài x rộng, m) để kiểm tra vật được đỡ đủ; khớp với tools/make_primitives.py.
+# gso_mug: cập nhật theo kích thước fetch_gso.py in ra.
+object_footprint_m:
+  gso_mug: [0.12, 0.09]
+  obj_phone: [0.150, 0.072]
+  obj_tv_remote: [0.180, 0.048]
+  obj_glasses: [0.14, 0.19]
+  obj_wallet: [0.110, 0.090]
+  obj_cane: [0.85, 0.12]
+  obj_water_bottle: [0.068, 0.068]
+  obj_handbag: [0.30, 0.12]
+# 10 vị trí: 7 dễ thấy (70%) / 3 bị che (30%) theo mục 4.3.2 của đề cương.
+placements:
+  - {id: P01, object: gso_mug,          surface: CoffeeTable_01_001,  x: 1.95,  y: -1.62, z: 0.36, yaw: 0.0,  visibility: visible}
+  - {id: P02, object: obj_phone,        surface: NightStand_01_002,   x: -4.41, y: 2.86,  z: 0.69, yaw: 0.3,  visibility: visible}
+  - {id: P03, object: obj_glasses,      surface: ReadingDesk_01_001,  x: -8.98, y: 2.10,  z: 0.74, yaw: 1.57, visibility: visible}
+  - {id: P04, object: obj_tv_remote,    surface: TVCabinet_01_001,    x: 1.75,  y: -5.12, z: 0.49, yaw: 0.0,  visibility: visible}
+  - {id: P05, object: obj_water_bottle, surface: KitchenTable_01_001, x: 6.10,  y: 0.95,  z: 0.80, yaw: 0.0,  visibility: visible}
+  - {id: P06, object: obj_wallet,       surface: Bed_01_001,          x: -6.60, y: 2.20,  z: 0.65, yaw: 0.5,  visibility: visible}
+  - {id: P07, object: obj_handbag,      surface: floor,               x: -4.60, y: 1.80,  z: 0.00, yaw: 1.57, visibility: visible}
+  - {id: P08, object: obj_cane,         surface: floor_under_KitchenTable, x: 6.55, y: 0.95, z: 0.00, yaw: 0.0, visibility: occluded}
+  - {id: P09, object: obj_phone,        surface: TVCabinet_01_001_shelf,   x: 0.20, y: -5.20, z: 0.19, yaw: 0.0, visibility: occluded}
+  - {id: P10, object: obj_wallet,       surface: floor_under_CoffeeTable,  x: 1.20, y: -1.75, z: 0.00, yaw: 0.0, visibility: occluded}

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="gso_mug">
+    <static>true</static>
+    <link name="link">
+      <!-- mesh shifted so the model origin is the bottom centre -->
+      <visual name="visual">
+        <pose>0.00015 0.00458 0.00001 0 0 0</pose>
+        <geometry><mesh><uri>model://gso_mug/meshes/model.obj</uri></mesh></geometry>
+      </visual>
+      <collision name="collision">
+        <pose>0 0 0.05240 0 0 0</pose>
+        <geometry><box><size>0.13684 0.10219 0.10479</size></box></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

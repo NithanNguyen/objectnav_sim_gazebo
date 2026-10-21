@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>objectnav_sim_gazebo</name>
+  <version>0.1.0</version>
+  <description>
+    Căn hộ ảo cho mô phỏng HIL đề tài CE407: AWS Small House + vật cần tìm (GSO và hình khối đơn giản)
+    + plugin gazebo_ros_state để lấy ground truth.
+  </description>
+  <maintainer email="npthienan257@gmail.com">Nithan Nguyen</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>gazebo_plugins</exec_depend>
+  <exec_depend>gazebo_msgs</exec_depend>
+  <exec_depend>aws_robomaker_small_house_world</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <!-- gazebo_ros đọc thẻ này để tự thêm models/ vào GAZEBO_MODEL_PATH khi chạy gzserver.launch.py -->
+    <gazebo_ros gazebo_model_path="${prefix}/models"/>
+  </export>
+</package>

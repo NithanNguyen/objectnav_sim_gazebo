@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="obj_glasses">
+    <static>true</static>
+    <link name="link">
+      <collision name="c0"><pose>-0.033 0 0.002 0 0 0</pose><geometry><cylinder><radius>0.025</radius><length>0.004</length></cylinder></geometry></collision>
+      <visual name="v0"><pose>-0.033 0 0.002 0 0 0</pose><geometry><cylinder><radius>0.025</radius><length>0.004</length></cylinder></geometry>
+        <material><ambient>0.6 0.75 0.85 1</ambient><diffuse>0.6 0.75 0.85 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+      <collision name="c1"><pose>0.033 0 0.002 0 0 0</pose><geometry><cylinder><radius>0.025</radius><length>0.004</length></cylinder></geometry></collision>
+      <visual name="v1"><pose>0.033 0 0.002 0 0 0</pose><geometry><cylinder><radius>0.025</radius><length>0.004</length></cylinder></geometry>
+        <material><ambient>0.6 0.75 0.85 1</ambient><diffuse>0.6 0.75 0.85 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+      <collision name="c2"><pose>0 0 0.002 0 0 0</pose><geometry><box><size>0.016 0.006 0.004</size></box></geometry></collision>
+      <visual name="v2"><pose>0 0 0.002 0 0 0</pose><geometry><box><size>0.016 0.006 0.004</size></box></geometry>
+        <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+      <collision name="c3"><pose>-0.058 0.06 0.003 0 0 0</pose><geometry><box><size>0.004 0.13 0.006</size></box></geometry></collision>
+      <visual name="v3"><pose>-0.058 0.06 0.003 0 0 0</pose><geometry><box><size>0.004 0.13 0.006</size></box></geometry>
+        <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+      <collision name="c4"><pose>0.058 0.06 0.003 0 0 0</pose><geometry><box><size>0.004 0.13 0.006</size></box></geometry></collision>
+      <visual name="v4"><pose>0.058 0.06 0.003 0 0 0</pose><geometry><box><size>0.004 0.13 0.006</size></box></geometry>
+        <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+    </link>
+  </model>
+</sdf>

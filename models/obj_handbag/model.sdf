@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="obj_handbag">
+    <static>true</static>
+    <link name="link">
+      <collision name="c0"><pose>0 0 0.11 0 0 0</pose><geometry><box><size>0.3 0.12 0.22</size></box></geometry></collision>
+      <visual name="v0"><pose>0 0 0.11 0 0 0</pose><geometry><box><size>0.3 0.12 0.22</size></box></geometry>
+        <material><ambient>0.55 0.15 0.15 1</ambient><diffuse>0.55 0.15 0.15 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+      <collision name="c1"><pose>-0.09 0 0.28 0 0 0</pose><geometry><box><size>0.02 0.012 0.12</size></box></geometry></collision>
+      <visual name="v1"><pose>-0.09 0 0.28 0 0 0</pose><geometry><box><size>0.02 0.012 0.12</size></box></geometry>
+        <material><ambient>0.3 0.08 0.08 1</ambient><diffuse>0.3 0.08 0.08 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+      <collision name="c2"><pose>0.09 0 0.28 0 0 0</pose><geometry><box><size>0.02 0.012 0.12</size></box></geometry></collision>
+      <visual name="v2"><pose>0.09 0 0.28 0 0 0</pose><geometry><box><size>0.02 0.012 0.12</size></box></geometry>
+        <material><ambient>0.3 0.08 0.08 1</ambient><diffuse>0.3 0.08 0.08 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+      <collision name="c3"><pose>0 0 0.33 0 0 0</pose><geometry><box><size>0.2 0.012 0.02</size></box></geometry></collision>
+      <visual name="v3"><pose>0 0 0.33 0 0 0</pose><geometry><box><size>0.2 0.012 0.02</size></box></geometry>
+        <material><ambient>0.3 0.08 0.08 1</ambient><diffuse>0.3 0.08 0.08 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+    </link>
+  </model>
+</sdf>

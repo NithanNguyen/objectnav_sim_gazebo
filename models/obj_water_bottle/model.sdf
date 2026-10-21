@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="obj_water_bottle">
+    <static>true</static>
+    <link name="link">
+      <collision name="c0"><pose>0 0 0.1 0 0 0</pose><geometry><cylinder><radius>0.034</radius><length>0.2</length></cylinder></geometry></collision>
+      <visual name="v0"><pose>0 0 0.1 0 0 0</pose><geometry><cylinder><radius>0.034</radius><length>0.2</length></cylinder></geometry>
+        <material><ambient>0.55 0.8 0.95 1</ambient><diffuse>0.55 0.8 0.95 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+      <collision name="c1"><pose>0 0 0.215 0 0 0</pose><geometry><cylinder><radius>0.015</radius><length>0.03</length></cylinder></geometry></collision>
+      <visual name="v1"><pose>0 0 0.215 0 0 0</pose><geometry><cylinder><radius>0.015</radius><length>0.03</length></cylinder></geometry>
+        <material><ambient>0.1 0.3 0.8 1</ambient><diffuse>0.1 0.3 0.8 1</diffuse><specular>0.1 0.1 0.1 1</specular></material>
+      </visual>
+    </link>
+  </model>
+</sdf>

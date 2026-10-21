@@ -1,0 +1,209 @@
+frame: world
+note: z = mat ngang cao nhat co dien tich >= 40% mat lon nhat (visual mesh); x,y =
+  bao cua mat do; other_z = cac mat ngang khac >= 0.05 m2
+surfaces:
+- name: BalconyTable_01_001
+  type: BalconyTable_01
+  z: 0.4
+  x:
+  - -0.82
+  - -0.29
+  y:
+  - 3.85
+  - 4.38
+  area_m2: 0.28
+  other_z: []
+- name: Bed_01_001
+  type: Bed_01
+  z: 0.65
+  x:
+  - -7.05
+  - -5.29
+  y:
+  - 1.29
+  - 3.0
+  area_m2: 2.29
+  other_z:
+  - 0.27
+  - 0.57
+  - 1.23
+- name: ChairA_01_001
+  type: ChairA_01
+  z: 0.43
+  x:
+  - 6.93
+  - 7.29
+  y:
+  - 0.05
+  - 0.41
+  area_m2: 0.12
+  other_z: []
+- name: ChairA_01_002
+  type: ChairA_01
+  z: 0.42
+  x:
+  - 6.06
+  - 6.44
+  y:
+  - 0.05
+  - 0.43
+  area_m2: 0.07
+  other_z: []
+- name: ChairA_01_003
+  type: ChairA_01
+  z: 0.42
+  x:
+  - 5.88
+  - 6.25
+  y:
+  - 1.48
+  - 1.84
+  area_m2: 0.07
+  other_z: []
+- name: ChairA_01_004
+  type: ChairA_01
+  z: 0.41
+  x:
+  - 6.81
+  - 7.19
+  y:
+  - 1.46
+  - 1.84
+  area_m2: 0.07
+  other_z: []
+- name: ChairA_01_005
+  type: ChairA_01
+  z: 0.44
+  x:
+  - -8.47
+  - -8.11
+  y:
+  - 1.73
+  - 2.1
+  area_m2: 0.12
+  other_z: []
+- name: ChairD_01_001
+  type: ChairD_01
+  z: 0.38
+  x:
+  - -1.49
+  - -1.12
+  y:
+  - 3.89
+  - 4.31
+  area_m2: 0.06
+  other_z: []
+- name: ChairD_01_002
+  type: ChairD_01
+  z: 0.38
+  x:
+  - 0.07
+  - 0.43
+  y:
+  - 3.9
+  - 4.32
+  area_m2: 0.06
+  other_z: []
+- name: ChairD_01_003
+  type: ChairD_01
+  z: 0.38
+  x:
+  - -8.44
+  - -7.94
+  y:
+  - -4.69
+  - -4.21
+  area_m2: 0.06
+  other_z: []
+- name: CoffeeTable_01_001
+  type: CoffeeTable_01
+  z: 0.36
+  x:
+  - 0.86
+  - 2.18
+  y:
+  - -2.06
+  - -1.4
+  area_m2: 0.86
+  other_z: []
+- name: KitchenTable_01_001
+  type: KitchenTable_01
+  z: 0.8
+  x:
+  - 5.66
+  - 7.45
+  y:
+  - 0.6
+  - 1.3
+  area_m2: 1.23
+  other_z: []
+- name: NightStand_01_001
+  type: NightStand_01
+  z: 0.69
+  x:
+  - -8.09
+  - -7.36
+  y:
+  - 2.63
+  - 3.09
+  area_m2: 0.34
+  other_z: []
+- name: NightStand_01_002
+  type: NightStand_01
+  z: 0.69
+  x:
+  - -4.77
+  - -4.05
+  y:
+  - 2.63
+  - 3.09
+  area_m2: 0.34
+  other_z: []
+- name: ReadingDesk_01_001
+  type: ReadingDesk_01
+  z: 0.74
+  x:
+  - -9.25
+  - -8.73
+  y:
+  - 1.49
+  - 2.63
+  area_m2: 0.59
+  other_z: []
+- name: ShoeRack_01_001
+  type: ShoeRack_01
+  z: 1.0
+  x:
+  - 3.86
+  - 4.74
+  y:
+  - -5.31
+  - -5.03
+  area_m2: 0.25
+  other_z:
+  - 0.37
+  - 0.69
+- name: SofaC_01_001
+  type: SofaC_01
+  z: 0.49
+  x:
+  - -0.77
+  - 1.41
+  y:
+  - -3.01
+  - -0.84
+  area_m2: 1.76
+  other_z:
+  - 0.89
+- name: TVCabinet_01_001
+  type: TVCabinet_01
+  z: 0.49
+  x:
+  - -0.45
+  - 2.03
+  y:
+  - -5.48
+  - -4.9
+  area_m2: 1.39
+  other_z:
+  - 0.19
