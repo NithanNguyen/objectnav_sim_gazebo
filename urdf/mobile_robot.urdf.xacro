@@ -1,6 +1,11 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="mobile_robot">
 
+    <!-- Robot mô phỏng = URDF v1 của receptionist_robot (urdf/mobile_robot.urdf.xacro, mesh Model_v1.stl).
+         Mesh trỏ vào chính gói này (package://objectnav_sim_gazebo/meshes/...). Khi URDF -> SDF, sdformat đổi
+         package:// thành model://, nên home_sim.launch.py thêm thư mục share/ của gói vào GAZEBO_MODEL_PATH.
+         Collision dùng hình khối đơn giản (đo từ mesh) thay cho mesh STL ~1e5 tam giác. -->
+
     <!-- ==================== MATERIALS & MACROS ==================== -->
     <material name="white">
         <color rgba="1 1 1 1"/>
@@ -32,6 +37,17 @@
             <inertia ixx="${(1/12) * mass * (3*radius*radius + length*length)}" ixy="0.0" ixz="0.0"
                      iyy="${(1/12) * mass * (3*radius*radius + length*length)}" iyz="0.0"
                      izz="${(1/2) * mass * (radius*radius)}" />
+        </inertial>
+    </xacro:macro>
+
+    <!-- Trụ đặc có trục đối xứng theo y (trục quay của bánh: joint axis = 0 1 0) -> iyy = 1/2 m r^2 -->
+    <xacro:macro name="inertial_cylinder_y" params="mass length radius *origin">
+        <inertial>
+            <xacro:insert_block name="origin"/>
+            <mass value="${mass}" />
+            <inertia ixx="${(1/12) * mass * (3*radius*radius + length*length)}" ixy="0.0" ixz="0.0"
+                     iyy="${(1/2) * mass * (radius*radius)}" iyz="0.0"
+                     izz="${(1/12) * mass * (3*radius*radius + length*length)}" />
         </inertial>
     </xacro:macro>
 
@@ -88,16 +104,30 @@
             <!-- <origin xyz="0.03 0 0.05" rpy="0 0 0"/> -->
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/Model_v1.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="package://objectnav_sim_gazebo/meshes/Model_v1.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="white"/>
         </visual>
-        <collision>
-            <!-- <origin xyz="0.03 0 0.05" rpy="0 0 0"/> -->
-            <origin xyz="0 0 0" rpy="0 0 0"/>
-            <geometry>
-                <mesh filename="package://mobile_robot/meshes/Model_v1.stl" scale="0.001 0.001 0.001"/>
-            </geometry>
+        <!-- Collision: 4 hộp bao theo lát cắt chiều cao của Model_v1.stl (khung base_link, m):
+             thân dưới x[-0.100,0.292] y[±0.201] z[-0.011,0.530]; cột x[-0.030,0.222] y[±0.126] z[0.530,1.130];
+             đầu x[-0.030,0.291] y[±0.178] z[1.130,1.373].
+             Chừa khe z[0.045,0.110] quanh mặt quét LiDAR (laser_frame z=0.085, mesh RPLiDAR z[0.058,0.097])
+             để cảm biến ray (khi thêm sau) không bị chính thân robot che. -->
+        <collision name="chassis_base_low">
+            <origin xyz="0.096 0 0.017" rpy="0 0 0"/>
+            <geometry><box size="0.392 0.402 0.056"/></geometry>
+        </collision>
+        <collision name="chassis_base_high">
+            <origin xyz="0.096 0 0.320" rpy="0 0 0"/>
+            <geometry><box size="0.392 0.402 0.420"/></geometry>
+        </collision>
+        <collision name="chassis_column">
+            <origin xyz="0.096 0 0.830" rpy="0 0 0"/>
+            <geometry><box size="0.252 0.252 0.600"/></geometry>
+        </collision>
+        <collision name="chassis_head">
+            <origin xyz="0.1305 0 1.2515" rpy="0 0 0"/>
+            <geometry><box size="0.321 0.356 0.243"/></geometry>
         </collision>
         <xacro:inertial_box mass="${chassis_mass}" x="${chassis_length}" y="${chassis_width}" z="${chassis_height}">
             <origin xyz="0.15 0 0.3" rpy="0 0 0"/>
@@ -115,19 +145,20 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="package://objectnav_sim_gazebo/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="blue"/>
         </visual>
+        <!-- Collision: trụ bán kính wheel_radius, trục theo y (lốp nằm ở y∈[-0.02,0.02] của mesh) -->
         <collision>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
+                <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
             </geometry>
         </collision>
-        <xacro:inertial_cylinder mass="${wheel_mass}" length="${wheel_width}" radius="${wheel_radius}">
+        <xacro:inertial_cylinder_y mass="${wheel_mass}" length="${wheel_width}" radius="${wheel_radius}">
             <origin xyz="0 0 0" rpy="0 0 0"/>
-        </xacro:inertial_cylinder>
+        </xacro:inertial_cylinder_y>
     </link>
 
     <joint name="right_wheel_joint" type="continuous">
@@ -141,19 +172,20 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="package://objectnav_sim_gazebo/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="blue"/>
         </visual>
+        <!-- Collision: trụ bán kính wheel_radius, trục theo y (lốp nằm ở y∈[-0.02,0.02] của mesh) -->
         <collision>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/hoverboard_motor_assembly.stl" scale="0.001 0.001 0.001"/>
+                <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
             </geometry>
         </collision>
-        <xacro:inertial_cylinder mass="${wheel_mass}" length="${wheel_width}" radius="${wheel_radius}">
+        <xacro:inertial_cylinder_y mass="${wheel_mass}" length="${wheel_width}" radius="${wheel_radius}">
             <origin xyz="0 0 0" rpy="0 0 0"/>
-        </xacro:inertial_cylinder>
+        </xacro:inertial_cylinder_y>
     </link>
 
     <joint name="caster_wheel_joint" type="fixed">
@@ -166,7 +198,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://mobile_robot/meshes/caster_wheel.stl" scale="0.01 0.01 0.01"/>
+                <mesh filename="package://objectnav_sim_gazebo/meshes/caster_wheel.stl" scale="0.01 0.01 0.01"/>
             </geometry>
             <material name="black"/>
         </visual>
@@ -192,7 +224,7 @@
             <origin xyz="0 0 0" rpy="0 0 3.14159"/>
             <geometry>
                 <!-- <cylinder length="0.04" radius="0.038"/> -->
-                <mesh filename="package://mobile_robot/meshes/RPLiDAR_s2.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="package://objectnav_sim_gazebo/meshes/RPLiDAR_s2.stl" scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="black"/>
         </visual>
@@ -200,7 +232,7 @@
             <origin xyz="0 0 0" rpy="0 0 3.14159"/>
             <geometry>
                 <cylinder length="0.04" radius="0.038"/>
-                <!-- <mesh filename="package://mobile_robot/meshes/RPLiDAR_s2.stl" scale="0.001 0.001 0.001"/> -->
+                <!-- <mesh filename="package://objectnav_sim_gazebo/meshes/RPLiDAR_s2.stl" scale="0.001 0.001 0.001"/> -->
             </geometry>
         </collision>
         <xacro:inertial_cylinder mass="0.1" length="0.04" radius="0.038">
@@ -245,6 +277,7 @@
                 <origin xyz="0 0 0" rpy="0 0 0"/>
             </xacro:inertial_box>
         </link>
+        <gazebo reference="${name}_link"><material>Gazebo/Blue</material></gazebo>
     </xacro:macro>
 
     <!-- TOP -->
@@ -306,5 +339,19 @@
         <origin xyz="0.29 -0.145 0.04" rpy="1.5708 0 0"/>
     </joint>
     <xacro:ultrasonic_link name="us_bot_right"/> -->
+
+    <!-- ==================== GAZEBO ==================== -->
+    <!-- sdformat (sdf9) không chuyển <material><color> của URDF sang SDF, nên đặt màu Gazebo riêng -->
+    <gazebo reference="chassis"><material>Gazebo/White</material></gazebo>
+    <gazebo reference="left_wheel"><material>Gazebo/Blue</material></gazebo>
+    <gazebo reference="right_wheel"><material>Gazebo/Blue</material></gazebo>
+    <gazebo reference="laser_frame"><material>Gazebo/Black</material></gazebo>
+    <gazebo reference="imu_link"><material>Gazebo/Blue</material></gazebo>
+    <!-- Bánh caster gắn cứng (fixed joint) -> ma sát 0 để nó trượt thay vì lăn -->
+    <gazebo reference="caster_wheel">
+        <material>Gazebo/Black</material>
+        <mu1>0.0</mu1>
+        <mu2>0.0</mu2>
+    </gazebo>
 
 </robot>
