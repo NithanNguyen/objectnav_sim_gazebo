@@ -3,7 +3,7 @@ project(objectnav_sim_gazebo)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY launch worlds models config tools urdf meshes
+install(DIRECTORY launch worlds models config tools urdf meshes rviz
   DESTINATION share/${PROJECT_NAME}
   USE_SOURCE_PERMISSIONS
 )

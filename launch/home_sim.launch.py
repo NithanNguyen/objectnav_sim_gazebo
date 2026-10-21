@@ -6,6 +6,7 @@ ros2 launch objectnav_sim_gazebo home_sim.launch.py x:=-5.5 y:=-0.3 yaw:=1.57   
 ros2 launch objectnav_sim_gazebo home_sim.launch.py spawn_robot:=false   # chỉ căn hộ, không robot
 ros2 launch objectnav_sim_gazebo home_sim.launch.py publish_odom_tf:=false     # khi chạy EKF riêng
 ros2 launch objectnav_sim_gazebo home_sim.launch.py lidar_samples:=720         # LiDAR nhẹ hơn nếu RTF thấp
+ros2 launch objectnav_sim_gazebo home_sim.launch.py rviz:=true                 # mở thêm RViz2 (rviz/home_sim.rviz)
 
 Vị trí mặc định (x, y, yaw) = S1 trong config/trials.yaml.
 Topic: /cmd_vel (vào), /odom, /scan, /imu/data, /joint_states, /tf (ra) — trùng tên với robot thật.
@@ -69,6 +70,8 @@ def generate_launch_description():
                               description='diff-drive phát TF odom->base_footprint (false nếu dùng EKF)'),
         DeclareLaunchArgument('lidar_samples', default_value='3200',
                               description='số tia LiDAR mỗi vòng (3200 = 0.1125° như RPLIDAR S2)'),
+        DeclareLaunchArgument('rviz', default_value='false', description='mở RViz2 với rviz/home_sim.rviz'),
+        DeclareLaunchArgument('rviz_config', default_value=os.path.join(pkg, 'rviz', 'home_sim.rviz')),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(gazebo_ros, 'launch', 'gzserver.launch.py')),
@@ -81,6 +84,16 @@ def generate_launch_description():
 
         # /robot_description (latched) + TF tĩnh của robot, dùng đồng hồ mô phỏng
         OpaqueFunction(function=_robot_state_publisher, args=[pkg], condition=spawn_robot),
+
+        # RViz2 phải dùng đồng hồ mô phỏng, nếu không TF (đóng dấu giờ Gazebo) bị coi là quá cũ/quá mới
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            arguments=['-d', LaunchConfiguration('rviz_config')],
+            parameters=[{'use_sim_time': True}],
+            output='screen',
+            condition=IfCondition(LaunchConfiguration('rviz'))),
 
         # Đọc /robot_description và gọi dịch vụ /spawn_entity của Gazebo
         Node(
