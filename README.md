@@ -22,7 +22,7 @@ ROS 2 Foxy, Gazebo Classic 11, Ubuntu 20.04. Hướng dẫn đầy đủ nằm t
 
 ## Chạy nhanh
 ```bash
-cd ~/sim_ws && colcon build --symlink-install && source install/setup.bash   # lần 1: để tìm thấy gói AWS
+cd ~/objectnav_sim_gazebo && colcon build --symlink-install && source install/setup.bash   # lần 1: để tìm thấy gói AWS
 python3 src/home_sim_world/tools/fetch_gso.py src/home_sim_world/models mug=Room_Essentials_Mug_White_Yellow
 python3 src/home_sim_world/tools/build_world.py
 colcon build --symlink-install && source install/setup.bash                  # lần 2: cài model/world mới
@@ -37,7 +37,7 @@ Cài gói (ROS 2 Foxy, Ubuntu 20.04):
 sudo apt update
 sudo apt install ros-foxy-navigation2 ros-foxy-nav2-bringup \
                  ros-foxy-robot-localization ros-foxy-laser-filters ros-foxy-xacro
-cd ~/sim_ws && rosdep install --from-paths src --ignore-src -r -y --rosdistro foxy   # bổ sung theo package.xml
+cd ~/objectnav_sim_gazebo && rosdep install --from-paths src --ignore-src -r -y --rosdistro foxy   # bổ sung theo package.xml
 colcon build --symlink-install && source install/setup.bash
 ```
 Chạy:
