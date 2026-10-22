@@ -33,8 +33,13 @@ echo "$GAZEBO_RESOURCE_PATH" | tr ':' '\n' | grep -qx /usr/share/gazebo-11 \
   || warn "GAZEBO_RESOURCE_PATH chưa có /usr/share/gazebo-11 (thêm 'source /usr/share/gazebo/setup.sh' vào ~/.bashrc)"
 echo "  RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-<mặc định>}  ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}"
 
+echo "== Navigation (launch/nav_sim.launch.py)"
+for p in ros-foxy-navigation2 ros-foxy-nav2-bringup ros-foxy-robot-localization ros-foxy-laser-filters; do
+  dpkg -s "$p" >/dev/null 2>&1 && ok "$p" || bad "Thiếu gói $p (sudo apt install $p)"
+done
+
 echo "== Workspace"
-for p in aws_robomaker_small_house_world home_sim_world; do
+for p in aws_robomaker_small_house_world objectnav_sim_gazebo; do
   ros2 pkg prefix "$p" >/dev/null 2>&1 && ok "Gói $p" || bad "Không thấy gói $p (chưa build hoặc chưa source install/setup.bash)"
 done
 [ $FAIL = 0 ] && echo "Kết quả: ĐẠT" || echo "Kết quả: còn lỗi, xem các dòng [LỖI]"

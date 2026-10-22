@@ -1,4 +1,7 @@
-image: /home/thienan/home_sim_map.pgm
+# Bản đồ dựng bằng slam_sim.launch.py khi robot xuất phát tại S1 (world x=3.0, y=-3.0, yaw=3.14), nên gốc frame map
+# trùng vị trí S1 (map và world lệch nhau một phép quay ~pi). nav_sim.launch.py dùng map_x/map_y/map_yaw để đổi tọa độ.
+# image: đường dẫn tương đối -> nav2_map_server ghép với thư mục chứa file yaml này (map_io.cpp, Foxy).
+image: home_sim_map.pgm
 mode: trinary
 resolution: 0.05
 origin: [-6.34, -8.54, 0]
