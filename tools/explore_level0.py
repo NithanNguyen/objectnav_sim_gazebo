@@ -27,7 +27,7 @@ V, W = 0.30, 0.8              # m/s, rad/s (nav2_exploration_params của robot 
 LIDAR_RANGE = 10.0            # mapper_params_online_async.yaml: max_laser_range
 SENSE_STEP = 0.2              # minimum_travel_distance
 TICK = 1.0                    # tick_period của node
-P = dict(robot_radius=0.30, approach_radius=0.6, min_goal_distance=0.4, recheck_radius=0.5,
+P = dict(robot_radius=0.40, goal_clearance=0.60, approach_radius=0.6, min_goal_distance=0.4, recheck_radius=0.5,
          blacklist_radius=0.6, max_failures=2, min_frontier_size=8, done_patience=3,
          min_gain_cells=10)
 
@@ -46,8 +46,9 @@ def load_map(yaml_path):
 class World(object):
     def __init__(self, free_gt, blocked_gt, res, ox, oy, start):
         self.blocked = blocked_gt
-        # va chạm thật: ô có clearance THẬT < 0.25 m thì robot không vào được (Nav2 sẽ dừng/abort tại đó)
-        self.gt_ok = ndimage.distance_transform_edt(free_gt) * res >= 0.25
+        # va chạm thật: tâm robot cách vật cản thật < 0.32 m (nửa bề rộng footprint) thì thân robot chạm vật cản
+        # -> Nav2 dừng/abort tại đó
+        self.gt_ok = ndimage.distance_transform_edt(free_gt) * res >= 0.32
         self.grid = fc.Grid(-np.ones(free_gt.shape, np.int16), res, ox, oy)
         self.r, self.c = self.grid.to_cell(start[0], start[1])
         self.yaw = start[2]
@@ -112,7 +113,8 @@ def explore(world, denom):
         if not fr.clusters:
             return 'complete', stats, trace
         target, n_reach, _ = fc.select_target(world.grid, fr, world.xy(), bl, P['robot_radius'],
-                                              P['approach_radius'], P['min_goal_distance'])
+                                              P['approach_radius'], P['min_goal_distance'],
+                                              goal_clearance=P['goal_clearance'])
         if target is None:
             idle += 1
             if idle >= P['done_patience']:
@@ -189,7 +191,10 @@ def main():
     ap.add_argument('--map', default=os.path.join(pkg, 'maps', 'home_sim_map.yaml'))
     ap.add_argument('--trials', default=os.path.join(pkg, 'config', 'trials.yaml'))
     ap.add_argument('--random', type=int, default=0)
+    ap.add_argument('--robot-radius', type=float, default=P['robot_radius'])
+    ap.add_argument('--goal-clearance', type=float, default=P['goal_clearance'])
     a = ap.parse_args()
+    P['robot_radius'], P['goal_clearance'] = a.robot_radius, a.goal_clearance
     free, blocked, res, ox, oy = load_map(a.map)
     # map frame = robot tại S1 (xem maps/home_sim_map.yaml): world (x, y) -> map (3 - x, -3 - y), yaw - pi
     starts = {}

@@ -69,8 +69,13 @@ ros2 run nav2_map_server map_saver_cli -f ~/explored_map --ros-args -p use_sim_t
 ```
 Thuật toán (`scripts/frontier_core.py`, mỗi chu kỳ 1 s trên `/map` của slam_toolbox):
 1. Frontier = ô trống kề ô chưa biết; gom cụm (lân cận 8), bỏ cụm < `min_frontier_size` ô.
-2. Chọn cụm có điểm tiếp cận gần nhất **theo đường đi** (Dijkstra trên vùng đã biết là trống, clearance ≥ `robot_radius`);
-   điểm tiếp cận = ô đủ clearance, cách cụm ≤ `approach_radius`, gần tâm cụm nhất; hướng goal nhìn về tâm cụm.
+2. Chọn cụm có điểm tiếp cận gần nhất **theo đường đi** (Dijkstra trên vùng đã biết là trống, clearance ≥ `robot_radius`
+   = 0.40 m ≥ nửa bề rộng footprint có padding 0.37 m); điểm tiếp cận = ô cách cụm ≤ `approach_radius`, gần tâm cụm nhất,
+   có clearance ≥ `goal_clearance` = 0.60 m (≥ bán kính ngoại tiếp 0.56 m, để dừng và xoay được) **và** cost trên
+   `/global_costmap/costmap` ≤ `goal_max_cost` = 40 (≈ cách vật cản ≥ 0.57 m với inflation global hiện tại);
+   hướng goal = hướng từ robot tới điểm dừng (`face_frontier:=false`) để không phải xoay tại chỗ ở đích.
+   Lý do: Nav2 tính bán kính nội tiếp của footprint đa giác lệch tâm này chỉ 0.21 m, nên NavFn và critic `BaseObstacle`
+   (chỉ xét tâm robot) vẫn chấp nhận điểm cách tường 0.21–0.37 m, nơi thân robot đã chạm tường.
 3. Repetitive re-checking: cụm đang nhắm không còn là frontier thì chọn lại ngay (goal mới preempt goal cũ).
 4. Nav2 thất bại / quá `goal_timeout`, hoặc tới nơi mà cụm vẫn mở và quanh cụm không thêm ô đã biết → 1 lần thất bại;
    `max_failures` lần → blacklist theo bán kính `blacklist_radius`.

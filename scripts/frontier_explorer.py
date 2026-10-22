@@ -55,7 +55,14 @@ class FrontierExplorer(Node):
             'min_frontier_size': 8,        # [ô] cụm nhỏ hơn bị bỏ (8 ô = 0.4 m ở 5 cm/ô)
             'free_thresh': 20,             # ô 0..free_thresh là trống
             'occ_thresh': 65,              # ô >= occ_thresh là chiếm chỗ
-            'robot_radius': 0.30,          # [m] clearance tối thiểu của điểm/đường tiếp cận
+            # Footprint Nav2 (nav2_params.yaml): x -0.16..0.37, y ±0.32, footprint_padding 0.05
+            #   -> nửa bề rộng 0.37 m, bán kính ngoại tiếp 0.56 m, bán kính nội tiếp (Nav2 tính) chỉ 0.21 m.
+            'robot_radius': 0.40,          # [m] clearance tối thiểu của ĐƯỜNG đi tới điểm tiếp cận (>= nửa bề rộng)
+            'goal_clearance': 0.60,        # [m] clearance tối thiểu của ĐIỂM DỪNG (>= bán kính ngoại tiếp, để xoay được)
+            'costmap_topic': '/global_costmap/costmap',  # '' = tắt kiểm tra trên costmap của Nav2
+            'goal_max_cost': 40,           # điểm dừng phải có cost costmap 0..40 (thang 0..100 của OccupancyGrid);
+                                           # với inflation global (inscribed 0.21 m, cost_scaling 2.5) ~ cách vật cản >= 0.57 m
+            'face_frontier': False,        # False: hướng goal = hướng tiến (robot không phải xoay tại chỗ ở đích)
             'approach_radius': 0.6,        # [m] điểm tiếp cận cách cụm frontier tối đa
             'min_goal_distance': 0.4,      # [m] bỏ điểm tiếp cận quá gần robot
             'recheck_radius': 0.5,         # [m] cụm còn sống nếu còn ô frontier trong bán kính này
@@ -75,6 +82,7 @@ class FrontierExplorer(Node):
         self.state = IDLE
         self.map_msg = None
         self.map_rx_time = None
+        self.costmap_msg = None
         self.target = None
         self.goal_seq = 0
         self._goal_handle = None
@@ -92,6 +100,8 @@ class FrontierExplorer(Node):
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
                              reliability=ReliabilityPolicy.RELIABLE)
         self.create_subscription(OccupancyGrid, self.prm['map_topic'], self._on_map, latched)
+        if self.prm['costmap_topic']:
+            self.create_subscription(OccupancyGrid, self.prm['costmap_topic'], self._on_costmap, latched)
         self.marker_pub = self.create_publisher(MarkerArray, '/explore/frontiers', 10)
         self.status_pub = self.create_publisher(String, '/explore/status', latched)
         self.create_service(Trigger, '/explore/start', self._on_start)
@@ -162,6 +172,9 @@ class FrontierExplorer(Node):
     def _on_map(self, msg):
         self.map_msg = msg
         self.map_rx_time = self._now()
+
+    def _on_costmap(self, msg):
+        self.costmap_msg = msg
 
     def _on_start(self, request, response):
         if self.state in (SELECT, MOVING, VERIFY):
@@ -251,9 +264,16 @@ class FrontierExplorer(Node):
             self.get_logger().info('Waiting for action server %s ...' % self.prm['action_name'],
                                    throttle_duration_sec=5.0)
             return
+        cost_ok = None
+        if self.costmap_msg is not None:
+            cost_ok = fc.costmap_ok_mask(grid, fc.Grid.from_msg(self.costmap_msg), int(self.prm['goal_max_cost']))
         target, n_reach, n_black = fc.select_target(
             grid, frontiers, pose[:2], self.blacklist, self.prm['robot_radius'], self.prm['approach_radius'],
-            self.prm['min_goal_distance'], self.prm['free_thresh'], self.prm['occ_thresh'])
+            self.prm['min_goal_distance'], self.prm['free_thresh'], self.prm['occ_thresh'],
+            goal_clearance=self.prm['goal_clearance'], cost_ok=cost_ok)
+        if target is not None and not self.prm['face_frontier']:
+            # hướng goal = hướng từ robot tới điểm dừng: tránh pha RotateToGoal xoay tại chỗ ở chỗ chật
+            target.yaw = math.atan2(target.goal_xy[1] - pose[1], target.goal_xy[0] - pose[0])
         if target is None:
             self._cancel_current()  # không để Nav2 tiếp tục chạy tới mục tiêu cũ không còn được theo dõi
             self.no_target_ticks += 1

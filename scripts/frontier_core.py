@@ -115,7 +115,7 @@ def traversable(grid, robot_cell, robot_radius, free_thresh=20, occ_thresh=65,
         sub = free[rs:re, cs:ce] & (clearance[rs:re, cs:ce] >= escape_clearance) & disk
         trav[rs:re, cs:ce] |= sub
         trav[r0, c0] = True
-    return (trav, strict) if return_strict else trav
+    return (trav, strict, clearance) if return_strict else trav
 
 
 def geodesic_distance(trav, source_cell, res):
@@ -180,15 +180,23 @@ class Blacklist(object):
 
 
 def select_target(grid, frontiers, robot_xy, blacklist, robot_radius=0.30, approach_radius=0.6,
-                  min_goal_distance=0.4, free_thresh=20, occ_thresh=65):
+                  min_goal_distance=0.4, free_thresh=20, occ_thresh=65, goal_clearance=None, cost_ok=None):
     """Chọn cụm frontier có điểm tiếp cận gần nhất THEO ĐƯỜNG ĐI.
 
     Ứng viên = ô đủ clearance (robot_radius), cách một ô của cụm <= approach_radius, cách robot (theo đường đi)
     >= min_goal_distance; điểm tiếp cận của cụm = ứng viên gần tâm cụm nhất; chi phí = khoảng cách đường đi
     tới điểm đó. Trả về (Target hoặc None, số cụm tới được, số cụm bị blacklist).
+
+    goal_clearance: clearance tối thiểu (m) của ĐIỂM DỪNG, lớn hơn robot_radius của đường đi — để robot dừng
+    và xoay được tại đích (với footprint đa giác, nên >= bán kính ngoại tiếp). cost_ok: mask bool cùng kích
+    thước grid (costmap_ok_mask) — chỉ nhận điểm dừng mà costmap của Nav2 cũng coi là thoáng.
     """
     robot_cell = grid.to_cell(*robot_xy)
-    trav, strict = traversable(grid, robot_cell, robot_radius, free_thresh, occ_thresh, return_strict=True)
+    trav, strict, clearance = traversable(grid, robot_cell, robot_radius, free_thresh, occ_thresh,
+                                          return_strict=True)
+    stop_ok = strict & (clearance >= (robot_radius if goal_clearance is None else goal_clearance))
+    if cost_ok is not None:
+        stop_ok &= cost_ok
     dist = geodesic_distance(trav, robot_cell, grid.res) if grid.inside(*robot_cell) else np.full(grid.shape, np.inf)
     k = int(math.ceil(approach_radius / grid.res))
     h, w = grid.shape
@@ -205,7 +213,7 @@ def select_target(grid, frontiers, robot_xy, blacklist, robot_radius=0.30, appro
         near = ndimage.distance_transform_edt(~sub) <= k
         d_sub = dist[r0:r1, c0:c1]
         # điểm dừng phải đủ clearance thật (không lấy ô của vùng thoát quanh robot)
-        cand = near & strict[r0:r1, c0:c1] & np.isfinite(d_sub) & (d_sub >= min_goal_distance)
+        cand = near & stop_ok[r0:r1, c0:c1] & np.isfinite(d_sub) & (d_sub >= min_goal_distance)
         if not cand.any():
             continue
         n_reachable += 1
@@ -256,3 +264,20 @@ def known_cells_near(grid, cells_xy, margin=1.0):
     r0 = min(max(int(math.floor((y0 - grid.oy) / grid.res)), 0), h)
     r1 = min(max(int(math.ceil((y1 - grid.oy) / grid.res)), 0), h)
     return int((grid.data[r0:r1, c0:c1] >= 0).sum())
+
+
+def costmap_ok_mask(grid, costmap, max_cost):
+    """Mask bool theo lưới `grid`: True nếu ô tương ứng trên costmap Nav2 (nav_msgs/OccupancyGrid đã dịch giá trị:
+    0 trống, 1..98 vùng phồng, 99 inscribed, 100 lethal, -1 chưa biết) có giá trị 0..max_cost. Ô nằm ngoài
+    costmap được coi là True (costmap đổi kích thước chậm hơn /map một nhịp)."""
+    h, w = grid.shape
+    ys = grid.oy + (np.arange(h) + 0.5) * grid.res
+    xs = grid.ox + (np.arange(w) + 0.5) * grid.res
+    rows = np.floor((ys - costmap.oy) / costmap.res).astype(int)
+    cols = np.floor((xs - costmap.ox) / costmap.res).astype(int)
+    rin = (rows >= 0) & (rows < costmap.shape[0])
+    cin = (cols >= 0) & (cols < costmap.shape[1])
+    vals = costmap.data[np.ix_(np.clip(rows, 0, costmap.shape[0] - 1), np.clip(cols, 0, costmap.shape[1] - 1))]
+    ok = (vals >= 0) & (vals <= max_cost)
+    inside = np.outer(rin, cin)
+    return np.where(inside, ok, True)
