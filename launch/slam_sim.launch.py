@@ -22,8 +22,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription,
-                            LogInfo, OpaqueFunction, TimerAction)
+from launch.actions import (DeclareLaunchArgument, ExecuteProcess, GroupAction,
+                            IncludeLaunchDescription, LogInfo, OpaqueFunction, TimerAction)
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
@@ -89,18 +89,23 @@ def generate_launch_description():
 
         LogInfo(msg='[slam_sim] === Gazebo + EKF + laser_filters + slam_toolbox ==='),
 
-        # Gazebo + robot; khi có EKF thì tắt TF odom của diff-drive để chỉ còn 1 nguồn TF odom->base_footprint
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(pkg, 'launch', 'home_sim.launch.py')),
-            launch_arguments={
-                'gui': LaunchConfiguration('gui'),
-                'rviz': 'false',
-                'x': LaunchConfiguration('x'),
-                'y': LaunchConfiguration('y'),
-                'yaw': LaunchConfiguration('yaw'),
-                'lidar_samples': LaunchConfiguration('lidar_samples'),
-                'publish_odom_tf': PythonExpression(["'false' if '", use_ekf, "' == 'true' else 'true'"]),
-            }.items()),
+        # Gazebo + robot; khi có EKF thì tắt TF odom của diff-drive để chỉ còn 1 nguồn TF odom->base_footprint.
+        # Phải bọc trong GroupAction (scoped=True): ở Foxy, IncludeLaunchDescription đặt launch_arguments thẳng vào
+        # launch configuration của file cha (không có push/pop), nên 'rviz':'false' bên dưới sẽ ghi đè 'rviz' của
+        # file này và RViz ở TimerAction cuối không bao giờ được mở.
+        GroupAction(scoped=True, actions=[
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(os.path.join(pkg, 'launch', 'home_sim.launch.py')),
+                launch_arguments={
+                    'gui': LaunchConfiguration('gui'),
+                    'rviz': 'false',
+                    'x': LaunchConfiguration('x'),
+                    'y': LaunchConfiguration('y'),
+                    'yaw': LaunchConfiguration('yaw'),
+                    'lidar_samples': LaunchConfiguration('lidar_samples'),
+                    'publish_odom_tf': PythonExpression(["'false' if '", use_ekf, "' == 'true' else 'true'"]),
+                }.items()),
+        ]),
 
         OpaqueFunction(function=_bag_record),
 
