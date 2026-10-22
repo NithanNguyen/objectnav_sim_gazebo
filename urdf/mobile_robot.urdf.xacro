@@ -415,7 +415,7 @@
     <gazebo>
         <!-- Dẫn động vi sai: /cmd_vel -> bánh, /odom từ encoder (odometry_source 0, có trượt như thật, không phải
              ground truth). wheel_separation/diameter khớp wheel_odom_params.yaml (0.464 m, r = 0.084 m).
-             max_wheel_acceleration (m/s² tại vành bánh) = acc_lim_x của Nav2 (1.5); max_wheel_torque 20 N·m là giả định.
+             max_wheel_acceleration (m/s² tại vành bánh); max_wheel_torque 20 N·m là giả định.
              publish_odom_tf:=false khi chạy EKF (robot_localization) để tránh 2 nguồn TF odom->base_footprint. -->
         <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
             <update_rate>100</update_rate>
