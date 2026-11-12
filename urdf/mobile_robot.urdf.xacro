@@ -414,7 +414,7 @@
         <gazebo reference="${link}_link">
             <sensor name="${link}_sensor" type="ray">
                 <always_on>true</always_on>
-                <visualize>false</visualize>
+                <visualize>true</visualize>
                 <update_rate>10</update_rate>
                 <ray>
                     <scan>
