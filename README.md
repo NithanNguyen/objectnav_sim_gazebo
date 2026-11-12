@@ -17,6 +17,7 @@ ROS 2 Foxy, Gazebo Classic 11, Ubuntu 20.04. Hướng dẫn đầy đủ nằm t
 | `config/nav/nav2_params.yaml`, `behavior_trees/` | Nav2 params và BT chép từ `receptionist_robot` (chỉ sửa chỗ `[SIM]`) |
 | `launch/explore_sim.launch.py`, `rviz/explore_sim.rviz` | Gazebo + EKF + laser_filters + slam_toolbox + Nav2 (không AMCL) + khám phá frontier tự động |
 | `scripts/frontier_explorer.py`, `scripts/frontier_core.py` | Node khám phá (ROS 2) và lõi thuật toán không phụ thuộc ROS |
+| `scripts/ultrasonic_fusion_node.py` | Gộp 6 `/ultrasonic/*` (Range) thành `/ultrasonic_scan` cho local costmap (chép nguyên văn từ `receptionist_robot`) |
 | `tools/explore_level0.py` | Kiểm thử lõi khám phá ngoài ROS trên `maps/home_sim_map` (mô hình lưới) |
 | `maps/home_sim_map.yaml` | Bản đồ căn hộ (slam_toolbox, robot xuất phát tại S1 → gốc frame map = S1) |
 | `tools/check_env.sh` | Kiểm tra môi trường |
@@ -55,6 +56,22 @@ ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
 ```
 Đích tính trong frame **map** (gốc = S1, lệch world của Gazebo một phép quay ~π): world (x, y) ↔ map (3 − x, −3 − y).
 Nếu dựng lại bản đồ từ vị trí khác, truyền `map_x:= map_y:= map_yaw:=` = vị trí spawn lúc chạy `slam_sim.launch.py`.
+
+## Cảm biến siêu âm (phát hiện vật cản ngoài mặt quét LiDAR)
+Giống robot thật (`receptionist_robot`, `auto_exploration.launch.py` + `nav2_params*.yaml`):
+- URDF: 6 cảm biến ray `sensor_msgs/Range` trên link `us_{top,mid_top,mid_bot}_{left,right}_link` (cao 0.53 / 0.37 / 0.23 m
+  so với sàn; mặt quét LiDAR 0.17 m), nón ±0.13 rad, 0.02–2.5 m, 10 Hz → topic `/ultrasonic/us_{top,mid,bot}_{left,right}`
+  (cùng tên với `jetson_sensor_bridge`; ánh xạ mid_top→mid, mid_bot→bot theo thứ tự độ cao).
+- `ultrasonic_fusion_node.py` → `/ultrasonic_scan` (LaserScan, frame `base_footprint`, ≤ 2.0 m).
+- `local_costmap.obstacle_layer.observation_sources: scan ultrasonic`; global costmap chỉ dùng LiDAR (như robot thật).
+
+`nav_sim.launch.py` và `explore_sim.launch.py` bật mặc định; so sánh với cấu hình chỉ LiDAR bằng `ultrasonic:=false`.
+Kiểm tra: `ros2 topic hz /ultrasonic/us_top_left` (~10 Hz), `ros2 topic echo /ultrasonic_scan`, hiển thị `UltrasonicScan` trong RViz.
+
+Giới hạn: Gazebo coi mọi bề mặt có collision là phản xạ lý tưởng (không có phản xạ gương, hấp thụ, nhiễu chéo), nên đây
+là cận trên khả năng phát hiện. Mép trên nón tầng top chỉ đạt ~0.66 m ở 1 m, nên mặt bàn cao ≥ 0.74 m (ReadingDesk,
+KitchenTable trong `config/surfaces.yaml`) gần như nằm ngoài vùng phủ trong 2 m. Tia thấp nhất của tầng bot chạm sàn ở
+~1.77 m; fusion loại nó vì điểm chiếu cách tâm robot 2.015 m > 2.0 m, nhưng chỉ cần robot chúi ~0.25° là thành vật cản ảo.
 
 ## Khám phá tự động (frontier + slam_toolbox + Nav2)
 Robot tự dựng bản đồ căn hộ chưa biết rồi dừng khi hết frontier tới được:

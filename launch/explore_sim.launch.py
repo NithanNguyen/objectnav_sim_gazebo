@@ -8,6 +8,10 @@ ros2 launch objectnav_sim_gazebo explore_sim.launch.py gui:=false rviz:=false re
 Kết quả: log ">>> Exploration DONE: ..." và topic /explore/status (latched). Lưu bản đồ:
   ros2 run nav2_map_server map_saver_cli -f ~/explored_map --ros-args -p use_sim_time:=true
 
+Siêu âm (như auto_exploration.launch.py, nơi jetson_sensor_bridge + ultrasonic_fusion_node đang bật): 6 cảm biến ray
+trong URDF phát /ultrasonic/<name>, ultrasonic_fusion_node gộp thành /ultrasonic_scan cho local_costmap.
+Tắt bằng ultrasonic:=false (bỏ node và bỏ nguồn ultrasonic khỏi observation_sources).
+
 Cấu trúc như auto_exploration.launch.py của robot thật (receptionist_robot): slam_toolbox (online async, cùng file
 tham số với slam_sim.launch.py) phát /map và TF map->odom, Nav2 chạy navigation_launch.py (KHÔNG AMCL, KHÔNG
 map_server). Không dùng nav2_bringup bringup_launch.py slam:=True vì ở Foxy nhánh đó chạy online_sync_launch.py
@@ -37,16 +41,22 @@ from launch_ros.actions import Node
 
 BAG_TOPICS = ['/clock', '/scan', '/scan_filtered', '/odom', '/odometry/filtered', '/imu/data', '/cmd_vel',
               '/tf', '/tf_static', '/map', '/plan', '/explore/frontiers', '/explore/status']
+ULTRASONIC_TOPICS = ['/ultrasonic_scan'] + ['/ultrasonic/us_%s_%s' % (tier, side)
+                                            for tier in ('top', 'mid', 'bot') for side in ('left', 'right')]
 
 
-def _foxy_nav2_params(src, max_vel_x):
-    """Chép nav2_params.yaml: max_vel_x khi khám phá + tên tham số range của obstacle_layer theo Nav2 Foxy."""
+def _foxy_nav2_params(src, max_vel_x, ultrasonic):
+    """Chép nav2_params.yaml: max_vel_x khi khám phá + tên tham số range của obstacle_layer theo Nav2 Foxy
+    (+ bỏ nguồn ultrasonic khi ultrasonic:=false)."""
     with open(src, 'r') as f:
         data = yaml.safe_load(f)
     data = copy.deepcopy(data)
     data['controller_server']['ros__parameters']['FollowPath']['max_vel_x'] = max_vel_x
     for costmap in ('local_costmap', 'global_costmap'):
         layer = data[costmap][costmap]['ros__parameters'].get('obstacle_layer', {})
+        if not ultrasonic and 'observation_sources' in layer:
+            layer['observation_sources'] = ' '.join(
+                src for src in str(layer['observation_sources']).split() if src != 'ultrasonic')
         for source in str(layer.get('observation_sources', '')).split():
             obs = layer.get(source, {})
             if 'obstacle_max_range' in obs:
@@ -64,8 +74,9 @@ def _stack(context, pkg):
     sim_time = {'use_sim_time': True}
     interval = float(LaunchConfiguration('map_update_interval').perform(context))
     autostart = LaunchConfiguration('autostart').perform(context).lower() == 'true'
+    ultrasonic = LaunchConfiguration('ultrasonic').perform(context).lower() == 'true'
     params = _foxy_nav2_params(LaunchConfiguration('params_file').perform(context),
-                               float(LaunchConfiguration('explore_max_vel_x').perform(context)))
+                               float(LaunchConfiguration('explore_max_vel_x').perform(context)), ultrasonic)
 
     slam = Node(
         package='slam_toolbox', executable='async_slam_toolbox_node', name='slam_toolbox', output='screen',
@@ -93,7 +104,8 @@ def _stack(context, pkg):
         output='screen', parameters=[sim_time, {'autostart': autostart}])
 
     return [
-        LogInfo(msg='[explore_sim] map_update_interval=%.2f s, Nav2 params -> %s' % (interval, params)),
+        LogInfo(msg='[explore_sim] map_update_interval=%.2f s, ultrasonic=%s, Nav2 params -> %s' % (
+            interval, ultrasonic, params)),
         TimerAction(period=8.0, actions=[LogInfo(msg='[explore_sim] [8s] slam_toolbox (online_async)'), slam]),
         TimerAction(period=10.0, actions=[LogInfo(msg='[explore_sim] [10s] Nav2 navigation (no AMCL)'), nav2]),
         TimerAction(period=14.0, actions=[LogInfo(msg='[explore_sim] [14s] frontier_explorer'), explorer]),
@@ -106,8 +118,10 @@ def _bag_record(context):
     bags_dir = os.path.expanduser(LaunchConfiguration('bag_dir').perform(context))
     os.makedirs(bags_dir, exist_ok=True)
     bag_path = os.path.join(bags_dir, 'sim_explore_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
+    topics = BAG_TOPICS + (ULTRASONIC_TOPICS if LaunchConfiguration('ultrasonic').perform(context).lower() == 'true'
+                           else [])
     return [LogInfo(msg='[explore_sim] [bag] Recording -> ' + bag_path),
-            ExecuteProcess(cmd=['ros2', 'bag', 'record', '-o', bag_path] + BAG_TOPICS, output='screen')]
+            ExecuteProcess(cmd=['ros2', 'bag', 'record', '-o', bag_path] + topics, output='screen')]
 
 
 def generate_launch_description():
@@ -124,6 +138,11 @@ def generate_launch_description():
         name='scan_to_scan_filter_chain', output='screen',
         parameters=[os.path.join(cfg, 'laser_filter.yaml'), sim_time])
 
+    # /ultrasonic/* (Range, từ URDF) -> /ultrasonic_scan (LaserScan) cho local_costmap, như auto_exploration.launch.py.
+    ultrasonic_fusion = Node(
+        package='objectnav_sim_gazebo', executable='ultrasonic_fusion_node.py', name='ultrasonic_fusion_node',
+        output='screen', parameters=[sim_time], condition=IfCondition(LaunchConfiguration('ultrasonic')))
+
     rviz = Node(
         package='rviz2', executable='rviz2', name='rviz2', output='screen',
         arguments=['-d', LaunchConfiguration('rviz_config')], parameters=[sim_time],
@@ -137,6 +156,9 @@ def generate_launch_description():
         DeclareLaunchArgument('y', default_value='-3.0', description='world y lúc spawn (m), mặc định S1'),
         DeclareLaunchArgument('yaw', default_value='3.14', description='world yaw lúc spawn (rad), mặc định S1'),
         DeclareLaunchArgument('lidar_samples', default_value='3200'),
+        DeclareLaunchArgument('ultrasonic', default_value='true',
+                              description='true: ultrasonic_fusion_node + nguồn ultrasonic của local_costmap; '
+                                          'false: chỉ LiDAR (cảm biến trong URDF vẫn phát /ultrasonic/*)'),
         DeclareLaunchArgument('autostart', default_value='true',
                               description='true: tự khám phá khi /map, TF và Nav2 sẵn sàng; false: gọi /explore/start'),
         DeclareLaunchArgument('map_update_interval', default_value='1.0',
@@ -171,6 +193,7 @@ def generate_launch_description():
         # Cùng mốc thời gian với slam_sim.launch.py / nav_sim.launch.py (Gazebo spawn robot sau ~2–3 s).
         TimerAction(period=5.0, actions=[LogInfo(msg='[explore_sim] [5s] ekf_filter_node'), ekf]),
         TimerAction(period=6.0, actions=[LogInfo(msg='[explore_sim] [6s] scan_to_scan_filter_chain'), scan_filter]),
+        TimerAction(period=6.5, actions=[ultrasonic_fusion]),
         OpaqueFunction(function=_stack, args=[pkg]),
         TimerAction(period=8.0, actions=[rviz]),
     ])

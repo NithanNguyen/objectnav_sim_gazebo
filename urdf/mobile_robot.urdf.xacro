@@ -399,6 +399,64 @@
         </sensor>
     </gazebo>
 
+    <!-- Siêu âm: 6 cảm biến ray xuất sensor_msgs/Range trên /ultrasonic/<topic>, cùng topic với jetson_sensor_bridge
+         của robot thật -> scripts/ultrasonic_fusion_node.py (chép nguyên văn) dùng được không cần sửa.
+         Thông số lấy từ receptionist_robot@d288bb5:
+           * field_of_view 0.26 rad, max_range 2.5 m  <- jetson_sensor_bridge.py (_make_range)
+           * 10 Hz                                    <- esp32_ultrasonic_reader.cpp (TIME_SEND_MS 100)
+         Nón đo mô phỏng bằng 5x5 tia trong ±0.13 rad (ngang và dọc); gazebo_ros_ray_sensor (Foxy) lấy range = min các
+         tia và field_of_view = max(góc ngang, góc dọc) = 0.26 rad.
+         min 0.02 m (sàn đo 2 cm của HC-SR04) thay vì 0.01 m của bridge: tia bắt đầu tại x = 0.31 m, ngoài hộp collision
+         của thân (x <= 0.292) và của chính cảm biến (x <= 0.2975), để không tự thấy thân robot.
+         Không mô phỏng phản xạ gương, hấp thụ âm, nhiễu chéo hay việc ESP32 quét tuần tự từng cảm biến: mọi bề mặt có
+         collision đều phản xạ lý tưởng, nên đây là cận trên của khả năng phát hiện. -->
+    <xacro:macro name="ultrasonic_sensor" params="link topic">
+        <gazebo reference="${link}_link">
+            <sensor name="${link}_sensor" type="ray">
+                <always_on>true</always_on>
+                <visualize>false</visualize>
+                <update_rate>10</update_rate>
+                <ray>
+                    <scan>
+                        <horizontal>
+                            <samples>5</samples>
+                            <resolution>1</resolution>
+                            <min_angle>-0.13</min_angle>
+                            <max_angle>0.13</max_angle>
+                        </horizontal>
+                        <vertical>
+                            <samples>5</samples>
+                            <resolution>1</resolution>
+                            <min_angle>-0.13</min_angle>
+                            <max_angle>0.13</max_angle>
+                        </vertical>
+                    </scan>
+                    <range>
+                        <min>0.02</min>
+                        <max>2.5</max>
+                        <resolution>0.01</resolution>
+                    </range>
+                </ray>
+                <plugin name="${link}_plugin" filename="libgazebo_ros_ray_sensor.so">
+                    <ros><remapping>~/out:=ultrasonic/${topic}</remapping></ros>
+                    <output_type>sensor_msgs/Range</output_type>
+                    <radiation_type>ultrasound</radiation_type>
+                    <frame_name>${link}_link</frame_name>
+                </plugin>
+            </sensor>
+        </gazebo>
+    </xacro:macro>
+
+    <!-- Link URDF -> topic. Firmware ESP32 / bridge / fusion gọi 3 tầng là top, mid, bot; URDF đặt tên top, mid_top,
+         mid_bot (z = 0.445 / 0.29 / 0.145 m so với base_link). Ánh xạ theo thứ tự độ cao (suy luận, chưa đối chiếu
+         dây nối thực tế). -->
+    <xacro:ultrasonic_sensor link="us_top_left"      topic="us_top_left"/>
+    <xacro:ultrasonic_sensor link="us_top_right"     topic="us_top_right"/>
+    <xacro:ultrasonic_sensor link="us_mid_top_left"  topic="us_mid_left"/>
+    <xacro:ultrasonic_sensor link="us_mid_top_right" topic="us_mid_right"/>
+    <xacro:ultrasonic_sensor link="us_mid_bot_left"  topic="us_bot_left"/>
+    <xacro:ultrasonic_sensor link="us_mid_bot_right" topic="us_bot_right"/>
+
     <!-- IMU: BNO055 trên robot thật publish /imu/data, frame imu_link, 100 Hz. IMU mô phỏng lý tưởng (không nhiễu). -->
     <gazebo reference="imu_link">
         <sensor name="bno055" type="imu">

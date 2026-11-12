@@ -16,7 +16,11 @@ Gửi đích: nút "Navigation2 Goal" trong RViz, hoặc
   bno055                     -> gazebo_ros_imu_sensor /imu/data
   sllidar_node (RPLIDAR S2E) -> gazebo_ros_ray_sensor /scan (frame laser_frame)
   imu_reader                 -> bỏ (chỉ đổi quaternion -> Euler để xem, Nav2 không dùng)
-  jetson_sensor_bridge, ultrasonic_fusion_node, global_localizer -> bỏ (nav_v3 cũng đang tắt)
+  jetson_sensor_bridge (ESP32)  -> 6 cảm biến ray trong URDF, gazebo_ros_ray_sensor -> /ultrasonic/<name> (Range)
+  ultrasonic_fusion_node     -> GIỮ NGUYÊN (scripts/ultrasonic_fusion_node.py chép nguyên văn) -> /ultrasonic_scan
+                                (nav_v3 đang tắt 2 node này; mô phỏng bật như auto_exploration.launch.py,
+                                 tắt bằng ultrasonic:=false)
+  global_localizer           -> bỏ (nav_v3 cũng đang tắt)
   ekf / laser_filters        -> GIỮ NGUYÊN: dùng chung config/slam/ekf.yaml, config/slam/laser_filter.yaml (chép nguyên văn)
   nav2_bringup               -> GIỮ NGUYÊN: config/nav/nav2_params.yaml (chép nav2_params_test.yaml, 4 chỗ [SIM])
   set_initial_pose (/initialpose) -> giữ, nhưng tư thế tính từ vị trí spawn thay vì tọa độ tầng e6
@@ -37,7 +41,9 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-# Các topic của nav_v3.launch.py có trong mô phỏng (bỏ /ultrasonic*, /robot/* vì không có node phát) + /clock
+# Các topic của nav_v3.launch.py có trong mô phỏng (bỏ /robot/* vì không có node phát) + /clock
+ULTRASONIC_TOPICS = ['/ultrasonic_scan'] + ['/ultrasonic/us_%s_%s' % (tier, side)
+                                            for tier in ('top', 'mid', 'bot') for side in ('left', 'right')]
 BAG_TOPICS = ['/clock', '/scan', '/scan_filtered', '/odom', '/odometry/filtered', '/imu/data', '/amcl_pose',
               '/cmd_vel', '/tf', '/tf_static', '/plan', '/navigate_to_pose/_action/feedback']
 
@@ -64,13 +70,17 @@ def _initial_pose(context):
     return world_to_map(f['x'], f['y'], f['yaw'], f['map_x'], f['map_y'], f['map_yaw'])
 
 
-def _write_params(params_file, xm, ym, yawm):
-    """Chép params_file, chỉ thay initial_pose_* của AMCL; trả về đường dẫn file tạm."""
+def _write_params(params_file, xm, ym, yawm, ultrasonic):
+    """Chép params_file, thay initial_pose_* của AMCL (và bỏ nguồn ultrasonic khi ultrasonic:=false); trả về file tạm."""
     with open(params_file, 'r') as f:
         data = yaml.safe_load(f)
     amcl = data['amcl']['ros__parameters']
     amcl.update({'set_initial_pose': True, 'initial_pose_x': xm, 'initial_pose_y': ym,
                  'initial_pose_z': 0.0, 'initial_pose_yaw': yawm})
+    if not ultrasonic:
+        layer = data['local_costmap']['local_costmap']['ros__parameters']['obstacle_layer']
+        layer['observation_sources'] = ' '.join(
+            src for src in str(layer['observation_sources']).split() if src != 'ultrasonic')
     out = tempfile.NamedTemporaryFile(mode='w', prefix='nav_sim_params_', suffix='.yaml', delete=False)
     yaml.safe_dump(data, out, sort_keys=False)
     out.close()
@@ -79,13 +89,15 @@ def _write_params(params_file, xm, ym, yawm):
 
 def _nav2_and_initial_pose(context, pkg):
     xm, ym, yawm = _initial_pose(context)
-    params = _write_params(LaunchConfiguration('params_file').perform(context), xm, ym, yawm)
+    ultrasonic = LaunchConfiguration('ultrasonic').perform(context).lower() == 'true'
+    params = _write_params(LaunchConfiguration('params_file').perform(context), xm, ym, yawm, ultrasonic)
     pose_msg = yaml.safe_dump({
         'header': {'frame_id': 'map'},
         'pose': {'pose': {'position': {'x': xm, 'y': ym, 'z': 0.0},
                           'orientation': {'x': 0.0, 'y': 0.0, 'z': math.sin(yawm / 2), 'w': math.cos(yawm / 2)}},
                  'covariance': INITIAL_POSE_COV}}, default_flow_style=True, width=10000).strip()
-    info = '[nav_sim] AMCL initial pose (map) x=%.3f y=%.3f yaw=%.3f; params -> %s' % (xm, ym, yawm, params)
+    info = '[nav_sim] AMCL initial pose (map) x=%.3f y=%.3f yaw=%.3f; ultrasonic=%s; params -> %s' % (
+        xm, ym, yawm, ultrasonic, params)
 
     nav2 = GroupAction(scoped=True, actions=[  # scoped: xem chú thích GroupAction trong slam_sim.launch.py
         IncludeLaunchDescription(
@@ -120,8 +132,10 @@ def _bag_record(context):
     bags_dir = os.path.expanduser(LaunchConfiguration('bag_dir').perform(context))
     os.makedirs(bags_dir, exist_ok=True)
     bag_path = os.path.join(bags_dir, 'sim_nav_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
+    topics = BAG_TOPICS + (ULTRASONIC_TOPICS if LaunchConfiguration('ultrasonic').perform(context).lower() == 'true'
+                           else [])
     return [LogInfo(msg='[nav_sim] [bag] Recording -> ' + bag_path),
-            ExecuteProcess(cmd=['ros2', 'bag', 'record', '-o', bag_path] + BAG_TOPICS, output='screen')]
+            ExecuteProcess(cmd=['ros2', 'bag', 'record', '-o', bag_path] + topics, output='screen')]
 
 
 def generate_launch_description():
@@ -137,6 +151,11 @@ def generate_launch_description():
         package='laser_filters', executable='scan_to_scan_filter_chain',
         name='scan_to_scan_filter_chain', output='screen',
         parameters=[os.path.join(slam_cfg, 'laser_filter.yaml'), sim_time])
+
+    # /ultrasonic/* (Range, từ URDF) -> /ultrasonic_scan (LaserScan) cho local_costmap, như robot thật.
+    ultrasonic_fusion = Node(
+        package='objectnav_sim_gazebo', executable='ultrasonic_fusion_node.py', name='ultrasonic_fusion_node',
+        output='screen', parameters=[sim_time], condition=IfCondition(LaunchConfiguration('ultrasonic')))
 
     rviz = Node(
         package='rviz2', executable='rviz2', name='rviz2', output='screen',
@@ -160,6 +179,9 @@ def generate_launch_description():
             pkg, 'behavior_trees', 'navigate_w_replanning_and_recovery_x221.xml')),
         DeclareLaunchArgument('pub_initial_pose', default_value='true'),
         DeclareLaunchArgument('lidar_samples', default_value='3200'),
+        DeclareLaunchArgument('ultrasonic', default_value='true',
+                              description='true: ultrasonic_fusion_node + nguồn ultrasonic của local_costmap; '
+                                          'false: chỉ LiDAR (cảm biến trong URDF vẫn phát /ultrasonic/*)'),
         DeclareLaunchArgument('record_bag', default_value='false'),
         DeclareLaunchArgument('bag_dir', default_value='~/objectnav_sim_bags'),
 
@@ -186,6 +208,7 @@ def generate_launch_description():
         # cùng mốc với slam_sim.launch.py.
         TimerAction(period=5.0, actions=[LogInfo(msg='[nav_sim] [5s] ekf_filter_node'), ekf]),
         TimerAction(period=6.0, actions=[LogInfo(msg='[nav_sim] [6s] scan_to_scan_filter_chain'), scan_filter]),
+        TimerAction(period=6.5, actions=[ultrasonic_fusion]),
         OpaqueFunction(function=_nav2_and_initial_pose, args=[pkg]),
         TimerAction(period=8.0, actions=[rviz]),
     ])

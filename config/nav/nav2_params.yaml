@@ -1,13 +1,14 @@
 # Sao chép từ NithanNguyen/receptionist_robot@a22a31c config/nav2_params_test.yaml (file Nav2 mà nav_v3.launch.py dùng).
 # Giữ nguyên mọi tham số AMCL / DWB / costmap / planner / recoveries để mô phỏng và robot thật cùng cấu hình.
-# Chỉ sửa 4 chỗ bắt buộc cho mô phỏng (đánh dấu [SIM]):
+# Chỉ sửa 3 chỗ bắt buộc cho mô phỏng (đánh dấu [SIM]):
 #   1. use_sim_time: True  (đồng hồ Gazebo; launch/nav_sim.launch.py cũng ép lại qua nav2_bringup).
 #   2. amcl.initial_pose_*: = vị trí xuất phát S1 trong frame map (map của maps/home_sim_map.yaml được dựng
 #      khi robot xuất phát tại S1, nên S1 = gốc map). nav_sim.launch.py tự tính lại khi spawn ở vị trí khác.
 #   3. bt_navigator.default_bt_xml_filename: bỏ đường dẫn tuyệt đối của Jetson; launch truyền đường dẫn file BT
 #      đã cài (behavior_trees/navigate_w_replanning_and_recovery_x221.xml) qua đối số default_bt_xml_filename.
-#   4. local_costmap.obstacle_layer.observation_sources: chỉ 'scan' — URDF mô phỏng không có cảm biến siêu âm
-#      (robot thật cũng đang tắt jetson_sensor_bridge/ultrasonic_fusion trong nav_v3, nên /ultrasonic_scan không có dữ liệu).
+#   4. (đã bỏ) local_costmap.obstacle_layer.observation_sources trở lại 'scan ultrasonic' như robot thật:
+#      URDF mô phỏng có 6 cảm biến siêu âm, launch chạy ultrasonic_fusion_node -> /ultrasonic_scan.
+#      Tắt bằng đối số launch ultrasonic:=false (launch tự ghi đè observation_sources thành 'scan').
 # ==================== AMCL ====================
 amcl:
   ros__parameters:
@@ -247,8 +248,8 @@ local_costmap:
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        # observation_sources: scan ultrasonic   # robot thật
-        observation_sources: scan              # [SIM] không có cảm biến siêu âm trong URDF mô phỏng
+        observation_sources: scan ultrasonic
+        # observation_sources: scan
         scan:
           topic: /scan_filtered
           # observation_keep_time: 0.5    # [s] thời gian giữ lại các quan sát trước khi xóa (giảm nhiễu từ vật di chuyển)
