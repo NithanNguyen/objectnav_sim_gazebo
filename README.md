@@ -29,7 +29,7 @@ cd ~/objectnav_sim_gazebo && colcon build --symlink-install && source install/se
 python3 src/home_sim_world/tools/fetch_gso.py src/home_sim_world/models mug=Room_Essentials_Mug_White_Yellow
 python3 src/home_sim_world/tools/build_world.py
 colcon build --symlink-install && source install/setup.bash                  # lần 2: cài model/world mới
-ros2 launch home_sim_world home_sim.launch.py
+ros2 launch objectnav_sim_gazebo home_sim.launch.py
 ```
 
 Quy ước: mọi model vật có gốc ở **tâm đáy** và là `static`, nên `z` của pose = độ cao bề mặt đỡ.
