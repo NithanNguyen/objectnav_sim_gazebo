@@ -27,8 +27,8 @@ ROS 2 Foxy, Gazebo Classic 11, Ubuntu 20.04. Hướng dẫn đầy đủ nằm t
 ## Chạy nhanh
 ```bash
 cd ~/objectnav_sim_gazebo && colcon build --symlink-install && source install/setup.bash   # lần 1: để tìm thấy gói AWS
-python3 src/home_sim_world/tools/fetch_gso.py src/home_sim_world/models mug=Room_Essentials_Mug_White_Yellow
-python3 src/home_sim_world/tools/build_world.py
+python3 src/objectnav_sim_gazebo/tools/fetch_gso.py src/objectnav_sim_gazebo/models mug=Room_Essentials_Mug_White_Yellow
+python3 src/objectnav_sim_gazebo/tools/build_world.py
 colcon build --symlink-install && source install/setup.bash                  # lần 2: cài model/world mới
 ros2 launch objectnav_sim_gazebo home_sim.launch.py
 ```
