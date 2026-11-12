@@ -35,6 +35,10 @@ ros2 launch objectnav_sim_gazebo home_sim.launch.py
 
 Quy ước: mọi model vật có gốc ở **tâm đáy** và là `static`, nên `z` của pose = độ cao bề mặt đỡ.
 
+**Không lưu world bằng File → Save World của Gazebo khi robot đang có trong cảnh**: model `mobile_robot` sẽ bị nhúng vào
+`home_trials.world`, `spawn_entity` báo `Entity [mobile_robot] already exists` và Gazebo chạy robot cũ thay vì URDF hiện tại
+(`home_sim.launch.py` nay dừng launch khi spawn thất bại). Muốn sửa world thì sinh lại bằng `tools/build_world.py`.
+
 ## Navigation (Nav2 + AMCL)
 Cài gói (ROS 2 Foxy, Ubuntu 20.04):
 ```bash

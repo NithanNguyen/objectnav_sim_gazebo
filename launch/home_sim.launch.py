@@ -16,7 +16,10 @@ import os
 import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import (DeclareLaunchArgument, EmitEvent, IncludeLaunchDescription, LogInfo, OpaqueFunction,
+                            RegisterEventHandler)
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -43,6 +46,17 @@ def _robot_state_publisher(context, pkg):
         parameters=[{'robot_description': robot_description, 'use_sim_time': True}])]
 
 
+def _on_spawn_exit(event, context):
+    """spawn_entity thất bại (vd. 'Entity [mobile_robot] already exists' khi world đã nhúng sẵn một robot cũ)
+    thì Gazebo vẫn chạy robot khác URDF hiện tại mà không báo gì; dừng hẳn để không chạy nhầm robot."""
+    if event.returncode == 0:
+        return []
+    return [LogInfo(msg='[home_sim] LỖI: spawn robot thất bại (exit %d). Kiểm tra world không chứa sẵn model '
+                        '\'%s\' (Gazebo "Save World" sẽ lưu cả robot) và không còn gzserver cũ (killall -9 gzserver). '
+                        'Dừng launch.' % (event.returncode, ROBOT_NAME)),
+            EmitEvent(event=Shutdown(reason='spawn_entity failed'))]
+
+
 def generate_launch_description():
     pkg = get_package_share_directory('objectnav_sim_gazebo')
     gazebo_ros = get_package_share_directory('gazebo_ros')
@@ -56,6 +70,17 @@ def generate_launch_description():
 
     world = LaunchConfiguration('world')
     spawn_robot = IfCondition(LaunchConfiguration('spawn_robot'))
+
+    # Đọc /robot_description và gọi dịch vụ /spawn_entity của Gazebo
+    spawn = Node(
+        package='gazebo_ros',
+        executable='spawn_entity.py',
+        name='spawn_robot',
+        output='screen',
+        arguments=['-topic', 'robot_description', '-entity', ROBOT_NAME,
+                   '-x', LaunchConfiguration('x'), '-y', LaunchConfiguration('y'),
+                   '-z', LaunchConfiguration('z'), '-Y', LaunchConfiguration('yaw')],
+        condition=spawn_robot)
     return LaunchDescription([
         DeclareLaunchArgument('world', default_value=os.path.join(pkg, 'worlds', 'home_trials.world')),
         DeclareLaunchArgument('gui', default_value='true'),
@@ -95,14 +120,6 @@ def generate_launch_description():
             output='screen',
             condition=IfCondition(LaunchConfiguration('rviz'))),
 
-        # Đọc /robot_description và gọi dịch vụ /spawn_entity của Gazebo
-        Node(
-            package='gazebo_ros',
-            executable='spawn_entity.py',
-            name='spawn_robot',
-            output='screen',
-            arguments=['-topic', 'robot_description', '-entity', ROBOT_NAME,
-                       '-x', LaunchConfiguration('x'), '-y', LaunchConfiguration('y'),
-                       '-z', LaunchConfiguration('z'), '-Y', LaunchConfiguration('yaw')],
-            condition=spawn_robot),
+        spawn,
+        RegisterEventHandler(OnProcessExit(target_action=spawn, on_exit=_on_spawn_exit)),
     ])
